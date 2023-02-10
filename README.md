@@ -4,11 +4,11 @@ Navier-Stokes equations. Simple fully explicit method.
 
 **Navier-Stokes equations**
 
-$$\frac{\partial \rho \bm{u}}{\partial t} + \nabla \cdot (\rho \bm{u} \otimes \bm{u}) = - \nabla p + \mu \Delta \bm{u}$$
+$$\frac{\partial \rho \boldsymbol{u}}{\partial t} + \nabla \cdot (\rho \boldsymbol{u} \otimes \boldsymbol{u}) = - \nabla p + \mu \Delta \boldsymbol{u}$$
 
 **Equation of continuity**
 
-$$\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho \bm{u}) = 0$$
+$$\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho \boldsymbol{u}) = 0$$
 
 **Equation of state**
 
