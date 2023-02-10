@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+main
+
+# PNG files
+*.png
+
+# VSCode
+
+.vscode/
