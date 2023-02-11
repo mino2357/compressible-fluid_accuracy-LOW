@@ -16,16 +16,15 @@ using unsignedInteger = unsigned int;
 using Scalar2D = std::vector<std::vector<Float>>;
 using Vector2D = std::vector<std::vector<Vec2D>>;
 
-constexpr Integer Nx = 1025;
-constexpr Integer Ny = 1025;
-constexpr Integer INTV = 5000; // outpu interval
+constexpr Integer Nx = 513;
+constexpr Integer Ny = 513;
+constexpr Integer INTV = 50000;
 constexpr Float   Lx = 1.0;
 constexpr Float   Ly = 1.0;
-constexpr Float   dt = 2.0e-5;
+constexpr Float   dt = 2.0e-6;
 constexpr Float   dx = Lx / (Nx - 1);
 constexpr Float   dy = Ly / (Ny - 1);
-constexpr Float   mu = 1.0 / 10000.0; // viscosity
-constexpr Float   PI = 3.1415926535897932384626433832795028841971;
+constexpr Float   mu = 1.0 / 100000.0;
 
 // H. Iijima, H. Hotta, S. Imada "Semi-conservative reduced speed of sound technique for low Mach number flows with large density variations"
 // ref. https://arxiv.org/abs/1812.04135
@@ -174,7 +173,7 @@ inline void transportContinuity(Scalar2D& a, Vector2D& vec, Scalar2D& tmp_a, Vec
 	}
 }
 
-inline void obstacle(Vector2D& vec){
+inline void obstacle(Scalar2D& a, Vector2D& vec){
 	unsignedInteger begin1 = 0.25 * vec.size();
 	unsignedInteger end1 = 0.75 * vec.size();
 	unsignedInteger begin2 = 0.25 * vec[0].size();
@@ -183,11 +182,21 @@ inline void obstacle(Vector2D& vec){
 	#pragma omp parallel for num_threads(28)
 	for(unsignedInteger i=0; i<vec.size(); ++i){
 		for(unsignedInteger j=0; j<vec[i].size(); ++j){
-			if((begin1 < i && i < end1) && (begin2 < j && j < end2)){
+			if((begin1 <= i && i <= end1) && (begin2 <= j && j <= end2)){
 				vec[i][j].x = 0.0;
 				vec[i][j].y = 0.0;
 			}
 		}
+	}
+	#pragma omp parallel for num_threads(28)
+	for(unsignedInteger i=0; i<vec.size(); ++i){
+		a[i][begin2] = a[i][begin2+1];
+		a[i][end2] = a[i][end2-1];
+	}
+	#pragma omp parallel for num_threads(28)
+	for(unsignedInteger j=0; j<vec[0].size(); ++j){
+		a[begin1][j] = a[begin1+1][j];
+		a[end1][j] = a[end1-1][j];
 	}
 }
 
@@ -199,19 +208,19 @@ int main(){
 	auto tmp_a = a;
 	auto tmp_vec = u;
 	auto u_old = u;
-	auto scale = 1.0e-3;
+	auto scale = 1.0 / Nx;
 	std::string str1 = "set output 'fluid-";
 	std::string str2 = ".png'\n";
-
 	std::FILE *gp = popen("gnuplot -persist", "w" );
-	fprintf(gp, "set title'Navier–Stokes equations. Re=10000.' \n");
+	fprintf(gp, "set title'Navier–Stokes equations. Re=100000.' \n");
 	fprintf(gp, "set contour\n");
 	fprintf(gp, "set xr [0:%f]\n", Lx);
 	fprintf(gp, "set yr [0:%f]\n", Ly);
 	fprintf(gp, "set terminal png\n");
 	//fprintf(gp, "set palette defined(0'#aaaaaa',0.8'#00008b',1.8'#2ca9e1',3'#008000',4.2'#ffff00',5'#eb6101',5.5'#8b0000')\n");
 	fprintf(gp, "set palette defined(0'#aaaaaa',0.4'#00008b',0.8'#2ca9e1',1.2'#008000',1.6'#ffff00',2.0'#eb6101',5.5'#8b0000')\n");
-	fprintf(gp, "set term pngcairo size 7680, 4320\n");
+	//fprintf(gp, "set term pngcairo size 7680, 4320\n");
+	fprintf(gp, "set term pngcairo size 3840, 2160\n");
 	fprintf(gp, "set size square\n");
 	fprintf(gp, "set grid\n");
 
@@ -225,13 +234,13 @@ int main(){
 			}
 		}
 		diffusionVector(a, u, tmp_vec);
-		obstacle(u);
+		//obstacle(a, u);
 		gradient(a, u);
-		obstacle(u);
+		//obstacle(a, u);
 		advection(u, tmp_vec);
-		obstacle(u);
+		//obstacle(a, u);
 		transportContinuity(a, u_old, tmp_a, tmp_vec);
-		obstacle(u);
+		//obstacle(a, u);
 		if(i%INTV == 0){
 			std::ostringstream oss;
 			oss.setf(std::ios::right);
@@ -240,8 +249,7 @@ int main(){
 			oss << i / INTV;
 			std::string num_str = oss.str();
 			std::cout << num_str << std::endl;
-
-			fprintf(gp, (str1 + num_str + str2).c_str());
+			fprintf(gp, "%s", (str1 + num_str + str2).c_str());
 			fprintf(gp, "plot '-' with vectors lw 1 lc palette notitle\n");
 			#pragma omp parallel for num_threads(28)
 			for(unsignedInteger i=0; i<a.size(); ++i){
@@ -249,7 +257,7 @@ int main(){
 					auto eps = 1.0e-12;
 					auto norm = std::sqrt(u[i][j].x * u[i][j].x + u[i][j].y * u[i][j].y);
 					fprintf(gp, "%f %f %f %f %f\n", i * dx, j * dy, scale * u[i][j].x / (norm + eps), scale * u[i][j].y / (norm + eps), norm);
-					//fprintf(gp, "%f %f %f %f %f\n", i * dx, j * dy, 0.25*u[i][j].x, 0.25*u[i][j].y, std::sqrt(u[i][j].x*u[i][j].x+u[i][j].y*u[i][j].y));
+					//fprintf(gp, "%f %f %f %f %f\n", i * dx, j * dy, 0.25*u[i][j].x, 0.25*u[i][j].y, a[i][j]);
 				}
 			}
 			fprintf(gp, "e\n");

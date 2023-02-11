@@ -35,6 +35,9 @@ main
 # PNG files
 *.png
 
+# mp4
+*.mp4
+
 # VSCode
 
 .vscode/
