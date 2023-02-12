@@ -39,5 +39,8 @@ main
 *.mp4
 
 # VSCode
-
 .vscode/
+
+# log
+*.dat
+*.log

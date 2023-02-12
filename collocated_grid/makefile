@@ -1,4 +1,5 @@
-CXX = g++
+#CXX = g++
+CXX = clang++-12
 TARGET = main
 CXXFLAGS = -std=c++2a -O2 -Wall -Wextra -march=native -mtune=native -fopenmp 
 LDLFLAGS = -lstdc++
