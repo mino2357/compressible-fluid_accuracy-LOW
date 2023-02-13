@@ -18,9 +18,9 @@ using unsignedInteger = unsigned int;
 using Scalar2D = std::vector<std::vector<Float>>;
 using Vector2D = std::vector<std::vector<Vec2D>>;
 
-constexpr Integer Nx = 1001;
-constexpr Integer Ny = 1001;
-constexpr Integer INTV = 25000;
+constexpr Integer Nx = 1003;
+constexpr Integer Ny = 1003;
+constexpr Integer INTV = 12500;
 constexpr Float   Lx = 1.0;
 constexpr Float   Ly = 1.0;
 constexpr Float   dt = 4.0e-6;
@@ -252,7 +252,7 @@ int main(){
 	fprintf(gp, "set yr [0:%f]\n", Ly);
 	fprintf(gp, "set terminal png\n");
 	//fprintf(gp, "set palette defined(0'#aaaaaa',0.8'#00008b',1.8'#2ca9e1',3'#008000',4.2'#ffff00',5'#eb6101',5.5'#8b0000')\n");
-	fprintf(gp, "set palette defined(0'#aaaaaa',0.2'#00008b',0.4'#2ca9e1',0.6'#008000',0.8'#ffff00',1.0'#eb6101',5.5'#8b0000')\n");
+	fprintf(gp, "set palette defined(0'#aaaaaa',0.2'#00008b',0.4'#2ca9e1',0.6'#008000',0.8'#ffff00',1.0'#eb6101', 4.0'#8b0000')\n");
 	//fprintf(gp, "set term pngcairo size 7680, 4320\n");
 	fprintf(gp, "set term pngcairo size 3840, 2160\n");
 	fprintf(gp, "set size square\n");
@@ -300,7 +300,7 @@ int main(){
 		}else if(itr%INTV == INTV-1){
 			end = std::chrono::system_clock::now();
 			double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
-			std::cout << elapsed / INTV << " [ms/step]" << std::endl;
+			std::cout << elapsed / (INTV - 1) << " [ms/step]" << std::endl;
 		}
 	}
 	pclose(gp);

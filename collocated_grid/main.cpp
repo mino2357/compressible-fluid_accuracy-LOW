@@ -20,7 +20,7 @@ using Vector2D = std::vector<std::vector<Vec2D>>;
 
 constexpr Integer Nx = 1000;
 constexpr Integer Ny = 1000;
-constexpr Integer INTV = 25000;
+constexpr Integer INTV = 10000;
 constexpr Float   Lx = 1.0;
 constexpr Float   Ly = 1.0;
 constexpr Float   dt = 4.0e-6;
@@ -175,34 +175,6 @@ inline void transportContinuity(Scalar2D& a, Vector2D& vec, Scalar2D& tmp_a, Vec
 	}
 }
 
-inline void obstacle(Scalar2D& a, Vector2D& vec){
-	unsignedInteger begin1 = 0.25 * vec.size();
-	unsignedInteger end1 = 0.75 * vec.size();
-	unsignedInteger begin2 = 0.25 * vec[0].size();
-	unsignedInteger end2 = 0.75 * vec[0].size();
-	unsignedInteger j=0;
-	
-	#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
-	for(unsignedInteger i=0; i<vec.size(); ++i){
-		for(j=0; j<vec[i].size(); ++j){
-			if((begin1 <= i && i <= end1) && (begin2 <= j && j <= end2)){
-				vec[i][j].x = 0.0;
-				vec[i][j].y = 0.0;
-			}
-		}
-	}
-	#pragma omp parallel for num_threads(omp_get_max_threads()/2)
-	for(unsignedInteger i=0; i<vec.size(); ++i){
-		a[i][begin2] = a[i][begin2+1];
-		a[i][end2] = a[i][end2-1];
-	}
-	#pragma omp parallel for num_threads(omp_get_max_threads()/2)
-	for(unsignedInteger j=0; j<vec[0].size(); ++j){
-		a[begin1][j] = a[begin1+1][j];
-		a[end1][j] = a[end1-1][j];
-	}
-}
-
 int main(){
 	Scalar2D a;
 	Vector2D u;
@@ -211,7 +183,7 @@ int main(){
 	auto tmp_a = a;
 	auto tmp_vec = u;
 	auto u_old = u;
-	auto scale = 1.0 / Nx;
+	auto scale = 4.0 / Nx;
 	std::string str1 = "set output 'fluid-";
 	std::string str2 = ".png'\n";
 	std::FILE *gp = popen("gnuplot -persist", "w" );
@@ -229,7 +201,7 @@ int main(){
 
 	unsignedInteger j=0;
 	std::chrono::system_clock::time_point  start, end;
-	for(auto itr=0; ; itr++){
+	for(auto itr=0; ;itr++){
 		#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
 		for(unsignedInteger i=0; i<u.size(); i++){
 			for(j=0; j<u[i].size(); ++j){
@@ -238,13 +210,9 @@ int main(){
 			}
 		}
 		diffusionVector(a, u, tmp_vec);
-		//obstacle(a, u);
 		gradient(a, u);
-		//obstacle(a, u);
 		advection(u, tmp_vec);
-		//obstacle(a, u);
 		transportContinuity(a, u_old, tmp_a, tmp_vec);
-		//obstacle(a, u);
 		if(itr%INTV == 0){
 			std::cout << itr/INTV;
 			std::ostringstream oss;
@@ -256,8 +224,8 @@ int main(){
 			fprintf(gp, "%s", (str1 + num_str + str2).c_str());
 			fprintf(gp, "plot '-' with vectors lw 1 lc palette notitle\n");
 			//#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
-			for(unsignedInteger i=0; i<a.size(); ++i){
-				for(j=0; j<a[i].size(); ++ j){
+			for(unsignedInteger i=0; i<a.size(); i+=3){
+				for(j=0; j<a[i].size(); j+=3){
 					auto eps = 1.0e-12;
 					auto norm = std::sqrt(u[i][j].x * u[i][j].x + u[i][j].y * u[i][j].y);
 					fprintf(gp, "%f %f %f %f %f\n", i * dx, j * dy, scale * u[i][j].x / (norm + eps), scale * u[i][j].y / (norm + eps), norm);
@@ -273,7 +241,7 @@ int main(){
 		}else if(itr%INTV == INTV-1){
 			end = std::chrono::system_clock::now();
 			double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
-			std::cout << elapsed / INTV << " [ms/step]" << std::endl;
+			std::cout << elapsed / (INTV - 1) << " [ms/step]" << std::endl;
 		}
 	}
 	pclose(gp);
