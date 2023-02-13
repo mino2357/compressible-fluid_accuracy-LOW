@@ -20,17 +20,22 @@ using Vector2D = std::vector<std::vector<Vec2D>>;
 
 constexpr Integer Nx = 1000;
 constexpr Integer Ny = 1000;
-constexpr Integer INTV = 10000;
+constexpr Integer INTV = 25000;
 constexpr Float   Lx = 1.0;
 constexpr Float   Ly = 1.0;
 constexpr Float   dt = 4.0e-6;
 constexpr Float   dx = Lx / (Nx - 1);
 constexpr Float   dy = Ly / (Ny - 1);
-constexpr Float   mu = 1.0 / 100000.0;
+constexpr Float   mu = 1.0 / 10000.0;
+constexpr Float inv_dx   = 1.0 / dx;
+constexpr Float inv_2dx  = 1.0 / (2.0 * dx);
+constexpr Float inv_dy   = 1.0 / dy;
+constexpr Float inv_2dy  = 1.0 / (2.0 * dy);
 
 // H. Iijima, H. Hotta, S. Imada "Semi-conservative reduced speed of sound technique for low Mach number flows with large density variations"
 // ref. https://arxiv.org/abs/1812.04135
 constexpr Float xi = 2.0;
+constexpr Float inv_xi_2 = 1.0 / (xi * xi);
 
 inline Float stateEq(Float a){
 	return 10.0 * a;
@@ -75,7 +80,7 @@ inline void initVector2D(Vector2D& v){
 	}
 }
 
-inline void diffusionVector(Scalar2D& a, Vector2D& vec, Vector2D& tmp_vec){
+inline void diffusionVector(const Scalar2D& a, Vector2D& vec, Vector2D& tmp_vec){
 	unsignedInteger j=0;
 	#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
 	for(unsignedInteger i=0; i<vec.size(); i++){
@@ -87,12 +92,14 @@ inline void diffusionVector(Scalar2D& a, Vector2D& vec, Vector2D& tmp_vec){
 	#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
 	for(unsignedInteger i=1; i<vec.size()-1; i++){
 		for(j=1; j<vec[i].size()-1; ++j){
+			auto inv_x = 1.0 / (dx * dx * a[i][j]);
+			auto inv_y = 1.0 / (dy * dy * a[i][j]);
 			vec[i][j].x +=
-						+ dt * mu * (tmp_vec[i + 1][j].x - 2.0 * tmp_vec[i][j].x + tmp_vec[i - 1][j].x) / (dx * dx) / a[i][j]
-						+ dt * mu * (tmp_vec[i][j + 1].x - 2.0 * tmp_vec[i][j].x + tmp_vec[i][j - 1].x) / (dy * dy) / a[i][j];
+						+ dt * mu * inv_x * (tmp_vec[i + 1][j].x - 2.0 * tmp_vec[i][j].x + tmp_vec[i - 1][j].x)
+						+ dt * mu * inv_y * (tmp_vec[i][j + 1].x - 2.0 * tmp_vec[i][j].x + tmp_vec[i][j - 1].x);
 			vec[i][j].y +=
-						+ dt * mu * (tmp_vec[i + 1][j].y - 2.0 * tmp_vec[i][j].y + tmp_vec[i - 1][j].y) / (dx * dx) / a[i][j]
-						+ dt * mu * (tmp_vec[i][j + 1].y - 2.0 * tmp_vec[i][j].y + tmp_vec[i][j - 1].y) / (dy * dy) / a[i][j];
+						+ dt * mu * inv_x * (tmp_vec[i + 1][j].y - 2.0 * tmp_vec[i][j].y + tmp_vec[i - 1][j].y)
+						+ dt * mu * inv_y * (tmp_vec[i][j + 1].y - 2.0 * tmp_vec[i][j].y + tmp_vec[i][j - 1].y);
 		}
 	}
 }
@@ -106,19 +113,19 @@ inline void advection(Vector2D& vec, Vector2D& tmp_vec){
 			tmp_vec[i][j].y = vec[i][j].y;
 		}
 	}
-	#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
+	#pragma omp parallel for num_threads(omp_get_max_threads()/2)
 	for(unsignedInteger i=1; i<vec.size()-1; i++){
 		for(j=1; j<vec[i].size()-1; ++j){
 			tmp_vec[i][j].x = vec[i][j].x
-						- dt * (vec[i][j].x * (vec[i+1][j].x - vec[i-1][j].x)/(2.0 * dx)
-						- std::abs(vec[i][j].x) / 2.0 * (vec[i+1][j].x - 2.0 * vec[i][j].x + vec[i-1][j].x) / dx)
-						- dt * (vec[i][j].y * (vec[i][j+1].x - vec[i][j-1].x)/(2.0 * dy)
-						- std::abs(vec[i][j].y) / 2.0 * (vec[i][j+1].x - 2.0 * vec[i][j].x + vec[i][j-1].x) / dy);
+						- dt * (vec[i][j].x * (vec[i+1][j].x - vec[i-1][j].x) * inv_2dx
+						- std::abs(vec[i][j].x) * 0.5 * (vec[i+1][j].x - 2.0 * vec[i][j].x + vec[i-1][j].x) * inv_dx)
+						- dt * (vec[i][j].y * (vec[i][j+1].x - vec[i][j-1].x) * inv_2dy
+						- std::abs(vec[i][j].y) * 0.5 * (vec[i][j+1].x - 2.0 * vec[i][j].x + vec[i][j-1].x) * inv_dy);
 			tmp_vec[i][j].y = vec[i][j].y
-						- dt * (vec[i][j].x * (vec[i+1][j].y - vec[i-1][j].y)/(2.0 * dx)
-						- std::abs(vec[i][j].x) / 2.0 * (vec[i+1][j].y - 2.0 * vec[i][j].y + vec[i-1][j].y) / dx)
-						- dt * (vec[i][j].y * (vec[i][j+1].y - vec[i][j-1].y)/(2.0 * dy)
-						- std::abs(vec[i][j].y) / 2.0 * (vec[i][j+1].y - 2.0 * vec[i][j].y + vec[i][j-1].y) / dy);
+						- dt * (vec[i][j].x * (vec[i+1][j].y - vec[i-1][j].y) * inv_2dx
+						- std::abs(vec[i][j].x) * 0.5 * (vec[i+1][j].y - 2.0 * vec[i][j].y + vec[i-1][j].y) * inv_dx)
+						- dt * (vec[i][j].y * (vec[i][j+1].y - vec[i][j-1].y) * inv_2dy
+						- std::abs(vec[i][j].y) * 0.5 * (vec[i][j+1].y - 2.0 * vec[i][j].y + vec[i][j-1].y) * inv_dy);
 		}
 	}
 	#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
@@ -130,13 +137,15 @@ inline void advection(Vector2D& vec, Vector2D& tmp_vec){
 	}
 }
 
-inline void gradient(Scalar2D& a, Vector2D& vec){
+inline void gradient(const Scalar2D& a, Vector2D& vec){
 	unsignedInteger j=0;
-	#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
+	#pragma omp parallel for num_threads(omp_get_max_threads()/2)
 	for(unsignedInteger i=1; i<a.size()-1; ++i){
 		for(j=1; j<a[i].size()-1; ++ j){
-			vec[i][j].x += - dt * (stateEq(a[i+1][j]) - stateEq(a[i-1][j])) / (2.0 * dx) / a[i][j];
-			vec[i][j].y += - dt * (stateEq(a[i][j+1]) - stateEq(a[i][j-1])) / (2.0 * dy) / a[i][j];
+			//auto inv_x = 1.0 / (2.0 * dx * a[i][j]);
+			//auto inv_y = 1.0 / (2.0 * dy * a[i][j]);
+			vec[i][j].x += - dt * (stateEq(a[i+1][j]) - stateEq(a[i-1][j])) / (2.0 * dx * a[i][j]);
+			vec[i][j].y += - dt * (stateEq(a[i][j+1]) - stateEq(a[i][j-1])) / (2.0 * dy * a[i][j]);
 		}
 	}
 }
@@ -151,16 +160,16 @@ inline void transportContinuity(Scalar2D& a, Vector2D& vec, Scalar2D& tmp_a, Vec
 			tmp_a[i][j] = a[i][j];
 		}
 	}
-	#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
+	#pragma omp parallel for num_threads(omp_get_max_threads()/2)
 	for(unsignedInteger i=1; i<a.size()-1; ++i){
 		for(j=1; j<a[i].size()-1; ++ j){
 			a[i][j] +=
-					- dt * tmp_a[i][j] * (tmp_vec[i+1][j].x - tmp_vec[i-1][j].x) / (2.0 * dx) / (xi * xi)
-					- dt * tmp_a[i][j] * (tmp_vec[i][j+1].y - tmp_vec[i][j-1].y) / (2.0 * dy) / (xi * xi)
-					- dt * (tmp_vec[i][j].x * (tmp_a[i+1][j] - tmp_a[i-1][j]) / (2.0 * dx)
-					- std::abs(tmp_vec[i][j].x) * (tmp_a[i+1][j] - 2.0 * tmp_a[i][j] + tmp_a[i-1][j]) / (2.0 * dx)) / (xi * xi)
-					- dt * (tmp_vec[i][j].y * (tmp_a[i][j+1] - tmp_a[i][j-1]) / (2.0 * dy)
-					- std::abs(tmp_vec[i][j].y) * (tmp_a[i][j+1] - 2.0 * tmp_a[i][j] + tmp_a[i][j-1]) / (2.0 * dy)) / (xi * xi);
+					- dt * tmp_a[i][j] * (tmp_vec[i+1][j].x - tmp_vec[i-1][j].x) * inv_2dx * inv_xi_2
+					- dt * tmp_a[i][j] * (tmp_vec[i][j+1].y - tmp_vec[i][j-1].y) * inv_2dy * inv_xi_2
+					- dt * (tmp_vec[i][j].x * (tmp_a[i+1][j] - tmp_a[i-1][j]) * inv_2dx
+					- std::abs(tmp_vec[i][j].x) * (tmp_a[i+1][j] - 2.0 * tmp_a[i][j] + tmp_a[i-1][j]) * inv_2dx) * inv_xi_2
+					- dt * (tmp_vec[i][j].y * (tmp_a[i][j+1] - tmp_a[i][j-1]) * inv_2dy
+					- std::abs(tmp_vec[i][j].y) * (tmp_a[i][j+1] - 2.0 * tmp_a[i][j] + tmp_a[i][j-1]) * inv_2dy) * inv_xi_2;
 		}
 	}
 	#pragma omp parallel for num_threads(omp_get_max_threads()/2)
