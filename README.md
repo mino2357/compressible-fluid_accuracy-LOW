@@ -45,6 +45,8 @@ $$\rho = \rho(p)$$
 
 ## Re=100
 
+601*601. 
+
 ![](images/cav-re100-y.png)
 
 ![](images/cav-re100-x.png)
