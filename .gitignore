@@ -32,9 +32,6 @@
 *.app
 main
 
-# PNG files
-*.png
-
 # mp4
 *.mp4
 

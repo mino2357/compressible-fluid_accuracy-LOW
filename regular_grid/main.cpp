@@ -20,15 +20,15 @@ using unsignedInteger = unsigned int;
 using Scalar2D = std::vector<std::vector<Float>>;
 using Vector2D = std::vector<std::vector<Vec2D>>;
 
-constexpr Integer Nx      = 1601;
-constexpr Integer Ny      = 1601;
+constexpr Integer Nx      = 601;
+constexpr Integer Ny      = 601;
 constexpr Integer INTV    = 2500;
 constexpr Float   Lx      = 1.0;
 constexpr Float   Ly      = 1.0;
-constexpr Float   dt      = 4.0e-6;
+constexpr Float   dt      = 4.0e-5;
 constexpr Float   dx      = Lx / (Nx - 1);
 constexpr Float   dy      = Ly / (Ny - 1);
-constexpr Float   mu      = 1.0 / 100000.0;
+constexpr Float   mu      = 1.0 / 100.0;
 constexpr Float   inv_dx  = 1.0 / dx;
 constexpr Float   inv_2dx = 1.0 / (2.0 * dx);
 constexpr Float   inv_dy  = 1.0 / dy;
@@ -217,7 +217,7 @@ int main(){
 			//
 			std::ofstream outputfile1("cav" + num_str + ".dat");
 			for(unsignedInteger i=0; i<a.size(); i+=10){
-				for(j=0; j<a[i].size(); j+=10){
+				for(unsignedInteger j=0; j<a[i].size(); j+=10){
 					outputfile1 << std::setprecision(12) << i * dx << " " << j * dy << " " << u[i][j].x << " " << u[i][j].y << "\n";
 				}
 			}
@@ -237,7 +237,7 @@ int main(){
 			//
 			std::ofstream outputfile4("cav-rho" + num_str + ".dat");
 			for(unsignedInteger i=0; i<a.size(); i+=2){
-				for(j=0; j<a[i].size(); j+=2){
+				for(unsignedInteger j=0; j<a[i].size(); j+=2){
 					outputfile4 << std::setprecision(15) << i * dx << " " << j * dy << " " << a[i][j] << "\n";
 				}
 				outputfile4 << std::setprecision(15) << "\n";
@@ -271,7 +271,7 @@ int main(){
 			fprintf(gp, "set title\n");
 			fprintf(gp, "set xr [0:1.0]\n");
 			fprintf(gp, "set yr [0:1.0]\n");
-			fprintf(gp, "set zr [0.998:1.002]\n");
+			//fprintf(gp, "set zr [0.998:1.002]\n");
 			fprintf(gp, "set palette defined(0 '#000090',1 '#000fff',2 '#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 '#ff7000',7 '#ee0000',8 '#7f0000')\n");
 			fprintf(gp, "set view map\n");
 			fprintf(gp, "set size square\n");
