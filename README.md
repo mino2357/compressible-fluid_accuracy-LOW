@@ -45,7 +45,9 @@ $$\rho = \rho(p)$$
 
 ## Re=100
 
-601*601. 
+regular_grid results.
+
+601 * 601. 
 
 ![](images/cav-re100-y.png)
 
