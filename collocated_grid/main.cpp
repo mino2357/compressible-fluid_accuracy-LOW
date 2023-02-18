@@ -4,6 +4,8 @@
 #include <cmath>
 #include <string>
 #include <chrono>
+#include <fstream>
+#include <iomanip>
 #include <omp.h>
 
 class Vec2D{
@@ -18,19 +20,19 @@ using unsignedInteger = unsigned int;
 using Scalar2D = std::vector<std::vector<Float>>;
 using Vector2D = std::vector<std::vector<Vec2D>>;
 
-constexpr Integer Nx = 1000;
-constexpr Integer Ny = 1000;
-constexpr Integer INTV = 25000;
-constexpr Float   Lx = 1.0;
-constexpr Float   Ly = 1.0;
-constexpr Float   dt = 4.0e-6;
-constexpr Float   dx = Lx / (Nx - 1);
-constexpr Float   dy = Ly / (Ny - 1);
-constexpr Float   mu = 1.0 / 10000.0;
-constexpr Float inv_dx   = 1.0 / dx;
-constexpr Float inv_2dx  = 1.0 / (2.0 * dx);
-constexpr Float inv_dy   = 1.0 / dy;
-constexpr Float inv_2dy  = 1.0 / (2.0 * dy);
+constexpr Integer Nx      = 1601;
+constexpr Integer Ny      = 1601;
+constexpr Integer INTV    = 2500;
+constexpr Float   Lx      = 1.0;
+constexpr Float   Ly      = 1.0;
+constexpr Float   dt      = 4.0e-6;
+constexpr Float   dx      = Lx / (Nx - 1);
+constexpr Float   dy      = Ly / (Ny - 1);
+constexpr Float   mu      = 1.0 / 100000.0;
+constexpr Float   inv_dx  = 1.0 / dx;
+constexpr Float   inv_2dx = 1.0 / (2.0 * dx);
+constexpr Float   inv_dy  = 1.0 / dy;
+constexpr Float   inv_2dy = 1.0 / (2.0 * dy);
 
 // H. Iijima, H. Hotta, S. Imada "Semi-conservative reduced speed of sound technique for low Mach number flows with large density variations"
 // ref. https://arxiv.org/abs/1812.04135
@@ -192,21 +194,13 @@ int main(){
 	auto tmp_a = a;
 	auto tmp_vec = u;
 	auto u_old = u;
-	auto scale = 4.0 / Nx;
+	auto scale = 12.0 / Nx;
 	std::string str1 = "set output 'fluid-";
 	std::string str2 = ".png'\n";
 	std::FILE *gp = popen("gnuplot -persist", "w" );
-	fprintf(gp, "set title'Navier–Stokes equations. Re=100000.' \n");
-	fprintf(gp, "set contour\n");
-	fprintf(gp, "set xr [0:%f]\n", Lx);
-	fprintf(gp, "set yr [0:%f]\n", Ly);
 	fprintf(gp, "set terminal png\n");
-	//fprintf(gp, "set palette defined(0'#aaaaaa',0.8'#00008b',1.8'#2ca9e1',3'#008000',4.2'#ffff00',5'#eb6101',5.5'#8b0000')\n");
-	fprintf(gp, "set palette defined(0'#aaaaaa',0.2'#00008b',0.4'#2ca9e1',0.6'#008000',0.8'#ffff00',1.0'#eb6101',5.5'#8b0000')\n");
-	//fprintf(gp, "set term pngcairo size 7680, 4320\n");
-	fprintf(gp, "set term pngcairo size 3840, 2160\n");
-	fprintf(gp, "set size square\n");
-	fprintf(gp, "set grid\n");
+	fprintf(gp, "set term pngcairo size 3840, 2160\n"); // 7680, 4320
+	//fprintf(gp, "set nokey\n");
 
 	unsignedInteger j=0;
 	std::chrono::system_clock::time_point  start, end;
@@ -230,18 +224,98 @@ int main(){
 			oss.width(8);
 			oss << itr / INTV;
 			std::string num_str = oss.str();
-			fprintf(gp, "%s", (str1 + num_str + str2).c_str());
-			fprintf(gp, "plot '-' with vectors lw 1 lc palette notitle\n");
-			//#pragma omp parallel for private(j) num_threads(omp_get_max_threads()/2)
-			for(unsignedInteger i=0; i<a.size(); i+=3){
-				for(j=0; j<a[i].size(); j+=3){
-					auto eps = 1.0e-12;
-					auto norm = std::sqrt(u[i][j].x * u[i][j].x + u[i][j].y * u[i][j].y);
-					fprintf(gp, "%f %f %f %f %f\n", i * dx, j * dy, scale * u[i][j].x / (norm + eps), scale * u[i][j].y / (norm + eps), norm);
-					//fprintf(gp, "%f %f %f %f %f\n", i * dx, j * dy, 0.25*u[i][j].x, 0.25*u[i][j].y, a[i][j]);
+			//
+			std::ofstream outputfile1("cav" + num_str + ".dat");
+			for(unsignedInteger i=0; i<a.size(); i+=10){
+				for(j=0; j<a[i].size(); j+=10){
+					outputfile1 << std::setprecision(12) << i * dx << " " << j * dy << " " << u[i][j].x << " " << u[i][j].y << "\n";
 				}
 			}
-			fprintf(gp, "e\n");
+			outputfile1.close();
+			//
+			std::ofstream outputfile2("cav-uy" + num_str + ".dat");
+			for(unsignedInteger i=0; i<a.size(); i++){
+				outputfile2 << std::setprecision(14) << i * dx << " " << u[Nx/2][i].x << "\n";
+			}
+			outputfile2.close();
+			//
+			std::ofstream outputfile3("cav-vx" + num_str + ".dat");
+			for(unsignedInteger i=0; i<a.size(); i++){
+				outputfile3 << std::setprecision(14) << i * dx << " " << u[i][Ny/2].y << "\n";
+			}
+			outputfile3.close();
+			//
+			std::ofstream outputfile4("cav-rho" + num_str + ".dat");
+			for(unsignedInteger i=0; i<a.size(); i+=2){
+				for(j=0; j<a[i].size(); j+=2){
+					outputfile4 << std::setprecision(15) << i * dx << " " << j * dy << " " << a[i][j] << "\n";
+				}
+				outputfile4 << std::setprecision(15) << "\n";
+			}
+			outputfile4.close();
+			//
+			auto png = "set output '" + num_str + ".png'\n";
+			fprintf(gp, "%s", png.c_str());
+			//
+			fprintf(gp, "set multiplot\n");
+			//
+			fprintf(gp, "reset\n");
+			fprintf(gp, "set lmargin screen 0.1234\n");
+			fprintf(gp, "set rmargin screen 0.45\n");
+			fprintf(gp, "set tmargin screen 0.975\n");
+			fprintf(gp, "set bmargin screen 0.525\n");
+			fprintf(gp, "set title\n");
+			fprintf(gp, "set xr [0:1.0]\n");
+			fprintf(gp, "set yr [0:1.0]\n");
+			fprintf(gp, "set palette defined(0'#aaaaaa',0.2'#00008b',0.4'#2ca9e1',0.6'#008000',0.8'#ffff00',1.0'#eb6101',4.0'#8b0000')\n");
+			fprintf(gp, "set size square\n");
+			fprintf(gp, "set grid\n");
+			auto plot = "plot 'cav" + num_str + ".dat' u 1:2:($3/(sqrt($3*$3+$4*$4)+1.0e-12)*" + std::to_string(scale) + "):($4/(sqrt($3*$3+$4*$4)+1.0e-12)*" + std::to_string(scale) + "):(sqrt($3*$3+$4*$4)) with vector lc palette notitle \n";
+			fprintf(gp, "%s", plot.c_str());
+			//
+			fprintf(gp, "reset\n");
+			//fprintf(gp, "set title\n");
+			fprintf(gp, "set lmargin screen 0.05\n");
+			fprintf(gp, "set rmargin screen 0.45\n");
+			fprintf(gp, "set tmargin screen 0.475\n");
+			fprintf(gp, "set bmargin screen 0.025\n");
+			fprintf(gp, "set title\n");
+			fprintf(gp, "set xr [0:1.0]\n");
+			fprintf(gp, "set yr [0:1.0]\n");
+			fprintf(gp, "set zr [0.998:1.002]\n");
+			//fprintf(gp, "set noxtics\n");
+			//fprintf(gp, "set noytics\n");
+			//fprintf(gp, "set nokey\n");
+			fprintf(gp, "set palette defined(0 '#000090',1 '#000fff',2 '#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 '#ff7000',7 '#ee0000',8 '#7f0000')\n");
+			fprintf(gp, "set view map\n");
+			fprintf(gp, "set size square\n");
+			fprintf(gp, "set pm3d\n");
+			fprintf(gp, "set pm3d map\n");
+			plot = "splot 'cav-rho" + num_str + ".dat' with pm3d notitle \n";
+			fprintf(gp, "%s", plot.c_str());
+			//
+			fprintf(gp, "reset\n");
+			fprintf(gp, "set lmargin screen 0.55\n");
+			fprintf(gp, "set rmargin screen 0.95\n");
+			fprintf(gp, "set tmargin screen 0.95\n");
+			fprintf(gp, "set bmargin screen 0.55\n");
+			fprintf(gp, "set xr [0:1.0]\n");
+			//fprintf(gp, "set yr [-0.6:1]\n");
+			plot = "plot 'cav-uy" + num_str + ".dat' w l\n";
+			fprintf(gp, "%s", plot.c_str());
+			//
+			fprintf(gp, "reset\n");
+			fprintf(gp, "set lmargin screen 0.55\n");
+			fprintf(gp, "set rmargin screen 0.95\n");
+			fprintf(gp, "set tmargin screen 0.45\n");
+			fprintf(gp, "set bmargin screen 0.05\n");
+			fprintf(gp, "set xr [0:1]\n");
+			//fprintf(gp, "set yr [-0.6:1]\n");
+			plot = "plot 'cav-vx" + num_str + ".dat' w l\n";
+			fprintf(gp, "%s", plot.c_str());
+			//
+			fprintf(gp, "unset multiplot\n");
+			//fprintf(gp, "quit\n");
 			fflush(gp);
 			std::cout << " png generated." << std::endl;
 		}
