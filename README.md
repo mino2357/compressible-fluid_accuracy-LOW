@@ -43,7 +43,7 @@ $$\rho = \rho(p)$$
 
 [![box in cavity](http://img.youtube.com/vi/llIm1qXyo4s/0.jpg)](https://www.youtube.com/watch?v=llIm1qXyo4s)
 
-## Re=100
+### Re=100
 
 regular_grid results.
 
@@ -52,6 +52,16 @@ regular_grid results.
 ![](images/cav-re100-y.png)
 
 ![](images/cav-re100-x.png)
+
+### Re=3200
+
+regular_grid results.
+
+1601 * 1601. 
+
+![](images/cav-re3200-y.png)
+
+![](images/cav-re3200-x.png)
 
 
 ## Reference (incompressible)

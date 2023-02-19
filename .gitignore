@@ -41,3 +41,5 @@ main
 # log
 *.dat
 *.log
+
+0000*.png

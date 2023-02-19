@@ -20,12 +20,12 @@ using unsignedInteger = unsigned int;
 using Scalar2D = std::vector<std::vector<Float>>;
 using Vector2D = std::vector<std::vector<Vec2D>>;
 
-constexpr Integer Nx      = 1601;
-constexpr Integer Ny      = 1601;
-constexpr Integer INTV    = 1000;
+constexpr Integer Nx      = 601;
+constexpr Integer Ny      = 601;
+constexpr Integer INTV    = 25000;
 constexpr Float   Lx      = 1.0;
 constexpr Float   Ly      = 1.0;
-constexpr Float   dt      = 4.0e-6;
+constexpr Float   dt      = 1.0e-5;
 constexpr Float   dx      = Lx / (Nx - 1);
 constexpr Float   dy      = Ly / (Ny - 1);
 constexpr Float   mu      = 1.0 / 100.0; //100000.0;
@@ -330,7 +330,7 @@ int main(){
 			fprintf(gp, "set title\n");
 			fprintf(gp, "set xr [0:1.0]\n");
 			fprintf(gp, "set yr [0:1.0]\n");
-			fprintf(gp, "set zr [0.998:1.002]\n");
+			//fprintf(gp, "set zr [0.998:1.002]\n");
 			fprintf(gp, "set palette defined(0 '#000090',1 '#000fff',2 '#0090ff',3 '#0fffee',4 '#90ff70',5 '#ffee00',6 '#ff7000',7 '#ee0000',8 '#7f0000')\n");
 			fprintf(gp, "set view map\n");
 			fprintf(gp, "set size square\n");
